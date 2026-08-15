@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Broad ETF Investment Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">BROAD-BASED ETFs ONLY</div>
+      <h1>Broad ETF Investment Assistant</h1>
+      <p>Portfolio-aware ETF guidance for a UAE investor using IBKR.</p>
+    </div>
+    <div class="pill">V1 • Demo market inputs</div>
+  </header>
+
+  <main>
+    <section class="grid two">
+      <div class="card">
+        <h2>Monthly contribution</h2>
+        <label>AED amount</label>
+        <input id="contribution" type="number" min="100" step="50" value="700" />
+        <button id="runBtn">Generate recommendation</button>
+        <p class="muted">V1 uses manual holdings and demo market scores. It does not place trades.</p>
+      </div>
+
+      <div class="card recommendation" id="recommendation">
+        <div class="eyebrow">THIS MONTH</div>
+        <h2 id="recTitle">Add your holdings</h2>
+        <div class="big" id="recAmount">AED 700</div>
+        <p id="recReason">Enter your current ETF holdings below, then generate a recommendation.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">PORTFOLIO</div>
+          <h2>Current holdings (AED)</h2>
+        </div>
+        <div class="target">Target: CSPX 65% • EIMI 20% • WSML 15%</div>
+      </div>
+      <div class="holdings">
+        <label>CSPX <input id="cspxHolding" type="number" min="0" value="0" /></label>
+        <label>EIMI <input id="eimiHolding" type="number" min="0" value="0" /></label>
+        <label>WSML <input id="wsmlHolding" type="number" min="0" value="0" /></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">ETF RANKINGS</div>
+          <h2>Broad-market opportunity scores</h2>
+        </div>
+        <span class="pill green">Compliance filter ON</span>
+      </div>
+      <div id="rankings"></div>
+    </section>
+
+    <section class="card disclaimer">
+      <strong>Important:</strong> This prototype is an educational decision-support tool, not regulated investment advice. V1 market scores are demonstration inputs and are not live prices, forecasts or recommendations from IBKR or the ETF issuers.
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
