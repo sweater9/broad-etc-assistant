@@ -1,0 +1,11 @@
+(()=>{
+const $=s=>document.querySelector(s);
+const core=['CSPX','EIMI','WSML'];
+const parseDate=d=>{const x=new Date(d+'T00:00:00Z');return Number.isNaN(+x)?null:x};
+const ageDays=d=>{const x=parseDate(d);return x?Math.floor((Date.now()-x)/86400000):9999};
+function rows(t){try{return (histories[t]||[]).map((x,i)=>typeof x==='number'?{d:'',p:x}:{d:x.d||x.date||'',p:+(x.p??x.price??x.close)}).filter(x=>x.p>0).sort((a,b)=>(a.d||'').localeCompare(b.d||''))}catch{return[]}}
+function health(t){const r=rows(t),dated=r.filter(x=>x.d),last=dated.at(-1),n=r.length,age=last?ageDays(last.d):9999,gaps=[];for(let i=1;i<dated.length;i++){const a=parseDate(dated[i-1].d),b=parseDate(dated[i].d);if(a&&b){const diff=(b-a)/86400000;if(diff>7)gaps.push(Math.round(diff))}}let status='Unavailable',score=0;if(n>=250&&age<=3){status='Healthy';score=100}else if(n>=120&&age<=7){status='Usable';score=75}else if(n>=60&&age<=14){status='Degraded';score=50}else if(n){status='Stale';score=25}return{t,n,last:last?.d||'Undated',age,status,score,gaps:gaps.length,maxGap:gaps.length?Math.max(...gaps):0}}
+function render(){const hs=core.map(health),avg=Math.round(hs.reduce((s,x)=>s+x.score,0)/hs.length),el=$('#sourceHealth'),badge=$('#sourceHealthBadge');if(!el)return;badge.textContent=avg>=85?'HEALTHY':avg>=60?'USABLE':avg>=35?'DEGRADED':'UNAVAILABLE';el.innerHTML=`<table><thead><tr><th>ETF</th><th>Status</th><th>Observations</th><th>Latest date</th><th>Age</th><th>Large gaps</th></tr></thead><tbody>${hs.map(h=>`<tr><td><b>${h.t}</b></td><td>${h.status}</td><td>${h.n}</td><td>${h.last}</td><td>${h.age>=9999?'—':h.age+'d'}</td><td>${h.gaps}${h.maxGap?' · max '+h.maxGap+'d':''}</td></tr>`).join('')}</tbody></table>`;const note=$('#sourceHealthNote');if(note)note.textContent=avg>=60?'Primary stored history is usable. Manual price-history input remains the fallback if refresh fails.':'Market history is incomplete or stale. Refresh the feed or use the manual price-history fallback before relying on the monthly signal.'}
+function bind(){render();const btn=$('#refreshMarket');if(btn)btn.addEventListener('click',()=>setTimeout(render,1800));const calc=$('#calcSignal');if(calc)calc.addEventListener('click',()=>setTimeout(render,100));}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
