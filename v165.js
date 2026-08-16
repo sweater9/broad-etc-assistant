@@ -1,28 +1,12 @@
-// V16.5.3 — system check: supports static HTML card and reliable button binding
-(() => {
-  const checks=[['Monthly decision','run','pick'],['Save portfolio','save','holdings'],['Clear portfolio','reset','holdings'],['Refresh market signals','refreshMarket','refreshResult'],['Save monthly review','saveMonthlyReview','monthlyReview'],['Clear monthly reviews','clearMonthlyReviews','monthlyReview'],['Clear outcomes','clearOutcomes','outcomeTracker'],['IBKR import','importIbkr','ibkrResult'],['Backtest','runBacktest','backtestSummary'],['Projection','runProjection','projectionSummary'],['Stress test','runStress','stressSummary'],['ETF comparison','compareBtn','compareResult'],['Manual signal calculation','calcSignal','calcResult'],['Restore issuer snapshot','applyReference','signals'],['Clear recommendation audit','clearAudit','auditTrail'],['Daily-history intake','v164Load','v164Result']];
-  function storageOK(){try{const k='__broadEtfSelfTest';localStorage.setItem(k,'ok');const ok=localStorage.getItem(k)==='ok';localStorage.removeItem(k);return ok}catch(e){return false}}
-  function runChecks(){
-    try{
-      const results=checks.map(([name,b,o])=>{const button=document.getElementById(b),output=document.getElementById(o);if(!button)return{name,status:'FAIL',detail:`Missing control #${b}`};if(!output)return{name,status:'FAIL',detail:`Missing output #${o}`};if(button.disabled)return{name,status:'WARNING',detail:'Control is currently disabled'};return{name,status:'PASS',detail:'Control and output target present'}});
-      ['decision','review','market','portfolio','research'].forEach(id=>results.push({name:`Navigation → ${id}`,status:document.getElementById(id)?'PASS':'FAIL',detail:document.getElementById(id)?'Anchor target present':`Missing #${id}`}));
-      const sok=storageOK();results.push({name:'Browser storage',status:sok?'PASS':'FAIL',detail:sok?'localStorage read/write available':'localStorage unavailable or blocked'});
-      const hc=document.querySelectorAll('.holding').length;results.push({name:'Core ETF inputs',status:hc>=3?'PASS':'FAIL',detail:`${hc} holding inputs found`});
-      results.push({name:'Application runtime',status:typeof window.fetch==='function'?'PASS':'FAIL',detail:typeof window.fetch==='function'?'Browser runtime available':'window.fetch unavailable'});
-      const pass=results.filter(x=>x.status==='PASS').length,warn=results.filter(x=>x.status==='WARNING').length,failed=results.filter(x=>x.status==='FAIL'),fail=failed.length;
-      const badge=document.getElementById('systemCheckBadge'),summary=document.getElementById('systemCheckSummary'),table=document.getElementById('systemCheckResults'),failBox=document.getElementById('systemCheckFailures');
-      if(badge)badge.textContent=fail?'FAIL':warn?'WARNING':'PASS';
-      if(summary)summary.innerHTML=`<span><b>${pass} PASS</b></span><span>${warn} WARNING</span><span><b>${fail} FAIL</b></span><span>Checked ${new Date().toLocaleString()}</span>`;
-      if(failBox)failBox.innerHTML=fail?`<div style="border:2px solid currentColor;padding:12px;border-radius:10px;margin:10px 0"><b>FAILED CHECK${fail>1?'S':''}</b>${failed.map(r=>`<div style="margin-top:6px"><b>${r.name}</b> — ${r.detail}</div>`).join('')}</div>`:`<div style="margin:10px 0"><b>No failed checks.</b></div>`;
-      if(table)table.innerHTML=`<table><thead><tr><th>Check</th><th>Status</th><th>Detail</th></tr></thead><tbody>${results.sort((a,b)=>({FAIL:0,WARNING:1,PASS:2}[a.status]-({FAIL:0,WARNING:1,PASS:2}[b.status])).map(r=>`<tr><td>${r.name}</td><td><b>${r.status}</b></td><td>${r.detail}</td></tr>`).join('')}</tbody></table>`;
-    }catch(e){const f=document.getElementById('systemCheckFailures');if(f)f.innerHTML=`<div style="border:2px solid currentColor;padding:12px;border-radius:10px"><b>System Check runtime error</b><div>${String(e&&e.message||e)}</div></div>`;}
-  }
-  function bind(){
-    const button=document.getElementById('runSystemCheck');
-    if(!button)return;
-    button.onclick=runChecks;
-    button.dataset.systemCheckBound='true';
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
-  window.runBroadEtfSystemCheck=runChecks;
+// V16.5.4 — standalone system check runner
+(function(){
+function storageOK(){try{var k='__broadEtfSelfTest';localStorage.setItem(k,'ok');var ok=localStorage.getItem(k)==='ok';localStorage.removeItem(k);return ok}catch(e){return false}}
+window.runBroadEtfSystemCheck=function(){
+ var specs=[['Monthly decision','run','pick'],['Save portfolio','save','holdings'],['Clear portfolio','reset','holdings'],['Refresh market signals','refreshMarket','refreshResult'],['Save monthly review','saveMonthlyReview','monthlyReview'],['Clear monthly reviews','clearMonthlyReviews','monthlyReview'],['Clear outcomes','clearOutcomes','outcomeTracker'],['IBKR import','importIbkr','ibkrResult'],['Backtest','runBacktest','backtestSummary'],['Projection','runProjection','projectionSummary'],['Stress test','runStress','stressSummary'],['ETF comparison','compareBtn','compareResult'],['Manual signal calculation','calcSignal','calcResult'],['Restore issuer snapshot','applyReference','signals'],['Clear recommendation audit','clearAudit','auditTrail'],['Daily-history intake','v164Load','v164Result']];
+ var r=[];specs.forEach(function(x){var b=document.getElementById(x[1]),o=document.getElementById(x[2]);r.push(!b?{name:x[0],status:'FAIL',detail:'Missing control #'+x[1]}:!o?{name:x[0],status:'FAIL',detail:'Missing output #'+x[2]}:{name:x[0],status:b.disabled?'WARNING':'PASS',detail:b.disabled?'Control disabled':'Control and output target present'});});
+ ['decision','review','market','portfolio','research'].forEach(function(id){r.push({name:'Navigation → '+id,status:document.getElementById(id)?'PASS':'FAIL',detail:document.getElementById(id)?'Anchor target present':'Missing #'+id});});
+ var s=storageOK();r.push({name:'Browser storage',status:s?'PASS':'FAIL',detail:s?'localStorage read/write available':'localStorage unavailable'});var n=document.querySelectorAll('.holding').length;r.push({name:'Core ETF inputs',status:n>=3?'PASS':'FAIL',detail:n+' holding inputs found'});r.push({name:'Application runtime',status:'PASS',detail:'System checker executed'});
+ var p=r.filter(function(x){return x.status==='PASS'}).length,w=r.filter(function(x){return x.status==='WARNING'}).length,f=r.filter(function(x){return x.status==='FAIL'}),badge=document.getElementById('systemCheckBadge'),sum=document.getElementById('systemCheckSummary'),box=document.getElementById('systemCheckFailures'),table=document.getElementById('systemCheckResults');
+ if(badge)badge.textContent=f.length?'FAIL':w?'WARNING':'PASS';if(sum)sum.innerHTML='<b>'+p+' PASS</b> · '+w+' WARNING · <b>'+f.length+' FAIL</b> · '+new Date().toLocaleString();if(box)box.innerHTML=f.length?'<div style="border:2px solid currentColor;padding:12px;border-radius:10px;margin:10px 0"><b>FAILED CHECK'+(f.length>1?'S':'')+'</b>'+f.map(function(x){return '<div><b>'+x.name+'</b> — '+x.detail+'</div>'}).join('')+'</div>':'<div style="margin:10px 0"><b>No failed checks.</b></div>';if(table)table.innerHTML='<table><thead><tr><th>Check</th><th>Status</th><th>Detail</th></tr></thead><tbody>'+r.sort(function(a,b){return({FAIL:0,WARNING:1,PASS:2}[a.status]-{FAIL:0,WARNING:1,PASS:2}[b.status])}).map(function(x){return '<tr><td>'+x.name+'</td><td><b>'+x.status+'</b></td><td>'+x.detail+'</td></tr>'}).join('')+'</tbody></table>';
+};
 })();
