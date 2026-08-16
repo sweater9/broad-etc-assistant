@@ -1,0 +1,11 @@
+{
+  "name": "broad-etf-assistant",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ci": "playwright test --reporter=line,html"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
