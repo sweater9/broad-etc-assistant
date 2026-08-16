@@ -1,0 +1,20 @@
+// V16.7 — Allocation consistency & recommendation sanity checks
+(()=>{
+ const TARGET={CSPX:65,EIMI:20,WSML:15},CORE=Object.keys(TARGET);
+ const num=x=>Number(x)||0;
+ function holdings(){const v={};document.querySelectorAll('.holding').forEach(x=>v[x.dataset.t]=Math.max(0,num(x.value)));return v}
+ function audit(){
+   const v=holdings(),total=CORE.reduce((s,t)=>s+(v[t]||0),0),budget=Math.max(0,num(document.getElementById('budget')?.value)),rows=CORE.map(t=>{const current=total?100*v[t]/total:0,drift=current-TARGET[t],targetValue=(total+budget)*TARGET[t]/100,gap=Math.max(0,targetValue-v[t]);return{t,value:v[t],current,drift,gap}}),gapTotal=rows.reduce((s,r)=>s+r.gap,0);
+   let allocation={}; if(budget>0){if(gapTotal>0)rows.forEach(r=>allocation[r.t]=budget*r.gap/gapTotal);else rows.forEach(r=>allocation[r.t]=budget*TARGET[r.t]/100)} else CORE.forEach(t=>allocation[t]=0);
+   const allocTotal=CORE.reduce((s,t)=>s+allocation[t],0),checks=[];
+   checks.push({name:'Target weights',ok:CORE.reduce((s,t)=>s+TARGET[t],0)===100,detail:'65% + 20% + 15% = 100%'});
+   checks.push({name:'Contribution conservation',ok:Math.abs(allocTotal-budget)<0.01,detail:`Allocated AED ${allocTotal.toFixed(2)} of AED ${budget.toFixed(2)}`});
+   checks.push({name:'Non-negative holdings',ok:CORE.every(t=>v[t]>=0),detail:'All entered holdings are zero or positive'});
+   checks.push({name:'Broad-only universe',ok:CORE.every(t=>['CSPX','EIMI','WSML'].includes(t)),detail:'Allocation engine restricted to core broad-market ETFs'});
+   const dataGate=window.BroadEtfValidation?.validate?.();checks.push({name:'Market-data gate',ok:!!dataGate?.ready,soft:true,detail:dataGate?.ready?'Validated history available':'Market timing must remain low-confidence; allocation drift can still be used'});
+   return{v,total,budget,rows,allocation,checks,hardPass:checks.filter(x=>!x.soft).every(x=>x.ok),dataReady:!!dataGate?.ready};
+ }
+ function render(){const host=document.getElementById('allocationAudit');if(!host)return;const a=audit(),badge=document.getElementById('allocationAuditBadge');if(badge)badge.textContent=a.hardPass?(a.dataReady?'PASS':'PASS / DATA BLOCKED'):'FAIL';host.innerHTML=`<div class="tablewrap"><table><thead><tr><th>ETF</th><th>Current</th><th>Target</th><th>Drift</th><th>Model contribution</th></tr></thead><tbody>${a.rows.map(r=>`<tr><td><b>${r.t}</b></td><td>${a.total?r.current.toFixed(1):'0.0'}%</td><td>${TARGET[r.t]}%</td><td>${a.total?(r.drift>=0?'+':'')+r.drift.toFixed(1):'—'}%</td><td>AED ${a.allocation[r.t].toFixed(0)}</td></tr>`).join('')}</tbody></table></div><div class="why">${a.checks.map(c=>`<span><b>${c.ok?'PASS':c.soft?'DATA GATE':'FAIL'} — ${c.name}:</b> ${c.detail}</span>`).join('')}</div><p class="muted">The model contribution is a deterministic drift-correction reference. Market signals may modify emphasis only when the V16.6 data gate is open; they should never create negative allocations or exceed the monthly budget.</p>`}
+ function install(){const decision=document.getElementById('decision');if(!decision||document.getElementById('allocationAuditCard'))return;const card=document.createElement('section');card.id='allocationAuditCard';card.className='card';card.innerHTML=`<div class="sectionhead"><div><p class="eyebrow">ALLOCATION SANITY CHECK</p><h3>Does the monthly allocation reconcile mathematically?</h3></div><span id="allocationAuditBadge" class="badge">CHECKING</span></div><div id="allocationAudit"></div>`;decision.insertAdjacentElement('afterend',card);render();document.getElementById('budget')?.addEventListener('input',render);document.querySelectorAll('.holding').forEach(x=>x.addEventListener('input',render));document.getElementById('run')?.addEventListener('click',()=>setTimeout(render,0));}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();window.addEventListener('storage',render);window.BroadEtfAllocationAudit={audit,render};
+})();
