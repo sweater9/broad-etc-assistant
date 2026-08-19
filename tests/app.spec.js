@@ -91,6 +91,64 @@ test('cache failure preserves validated local history instead of deleting it', a
   expect(counts).toEqual({CSPX:220,EIMI:220,WSML:220});
 });
 
+test('primary interactive controls complete without browser errors', async ({ page }) => {
+  const pageErrors=[];
+  page.on('pageerror',err=>pageErrors.push(err.message));
+  const start=new Date(); start.setUTCDate(start.getUTCDate()-259);
+  const rows=Array.from({length:260},(_,i)=>{const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);return{d:d.toISOString().slice(0,10),p:100+i*0.1}});
+  const latest=rows.at(-1).d;
+  const payload={schemaVersion:1,generatedAt:new Date().toISOString(),source:'QA control-smoke cache',symbols:{
+    CSPX:{ticker:'CSPX',symbol:'CSPX.L',latestDate:latest,rows},
+    EIMI:{ticker:'EIMI',symbol:'EIMI.L',latestDate:latest,rows:rows.map(x=>({...x,p:x.p*0.5}))},
+    WSML:{ticker:'WSML',symbol:'WSML.L',latestDate:latest,rows:rows.map(x=>({...x,p:x.p*0.02}))}
+  }};
+  await page.route('**/data/market-history.json*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(payload)}));
+
+  await page.locator('#runSystemCheck').click();
+  await expect(page.locator('#systemCheckSummary')).toContainText('PASS');
+  await page.locator('#refreshMarket').click();
+  await expect(page.locator('#feedStatus')).toContainText(/FRESH CACHE|CACHED/);
+
+  const holdings=page.locator('.holding');
+  await holdings.nth(0).fill('6500'); await holdings.nth(1).fill('2000'); await holdings.nth(2).fill('1500');
+  await page.locator('#save').click();
+  await page.locator('#run').click();
+  await expect(page.locator('#postAllocation')).not.toBeEmpty();
+
+  await page.locator('#runProjection').click();
+  await page.locator('#runStress').click();
+  await page.locator('#runBacktest').click();
+  await expect(page.locator('#projectionSummary')).not.toBeEmpty();
+  await expect(page.locator('#stressSummary')).not.toBeEmpty();
+  await expect(page.locator('#backtestSummary')).not.toBeEmpty();
+
+  await page.locator('#compareBtn').click();
+  await expect(page.locator('#compareResult')).not.toBeEmpty();
+  await page.locator('#applyReference').click();
+
+  await page.locator('#priceHistory').fill(Array.from({length:30},(_,i)=>String(100+i)).join(','));
+  await page.locator('#calcSignal').click();
+  await expect(page.locator('#calcResult')).toContainText('Trend');
+
+  await page.locator('#ibkrJson').fill(JSON.stringify({positions:[{symbol:'CSPX',marketValue:1000},{symbol:'EIMI',marketValue:500},{symbol:'WSML',marketValue:250}]}));
+  await page.locator('#importIbkr').click();
+  await expect(page.locator('#ibkrResult')).toContainText('Imported 3');
+
+  await page.locator('#saveMonthlyReview').click();
+  await expect(page.locator('#reviewStatus')).toContainText('Saved');
+  await page.locator('#clearMonthlyReviews').click();
+  await expect(page.locator('#reviewStatus')).toContainText('cleared');
+
+  for(const id of ['#clearOutcomes','#clearAudit']){
+    const control=page.locator(id);
+    if(await control.count()) await control.click();
+  }
+
+  await page.locator('#reset').click();
+  await expect(holdings.nth(0)).toHaveValue('0');
+  expect(pageErrors).toEqual([]);
+});
+
 test('how-to-use page is reachable', async ({ page }) => {
   await page.goto('/how-to-use.html');
   await expect(page.locator('body')).toContainText(/How to|ETF/i);
