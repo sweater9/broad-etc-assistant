@@ -29,9 +29,12 @@ test('portfolio save and clear work', async ({ page }) => {
   await expect(holdings).toHaveCount(3);
   await holdings.nth(0).fill('1000'); await holdings.nth(1).fill('200'); await holdings.nth(2).fill('100');
   await page.locator('#save').click();
-  await expect.poll(()=>page.evaluate(()=>localStorage.getItem('etfHoldings'))).not.toBeNull();
+  await expect.poll(()=>page.evaluate(()=>localStorage.getItem('broadEtfV8'))).not.toBeNull();
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('broadEtfV8')));
+  expect(saved.CSPX).toBe(1000); expect(saved.EIMI).toBe(200); expect(saved.WSML).toBe(100);
   await page.locator('#reset').click();
   await expect(holdings.nth(0)).toHaveValue('0');
+  await expect.poll(()=>page.evaluate(()=>localStorage.getItem('broadEtfV8'))).toBeNull();
 });
 
 test('research tools produce output', async ({ page }) => {
@@ -54,6 +57,38 @@ test('daily history rejects insufficient observations', async ({ page }) => {
 test('allocation audit conserves AED 700 contribution', async ({ page }) => {
   await page.locator('#budget').fill('700');
   await expect(page.locator('#allocationAudit')).toContainText('Allocated AED 700.00 of AED 700.00');
+});
+
+test('validated same-origin market cache populates all core histories', async ({ page }) => {
+  const start=new Date(); start.setUTCDate(start.getUTCDate()-259);
+  const rows=Array.from({length:260},(_,i)=>{const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);return{d:d.toISOString().slice(0,10),p:100+i*0.1}});
+  const latest=rows.at(-1).d;
+  const payload={schemaVersion:1,generatedAt:new Date().toISOString(),source:'QA validated cache',symbols:{
+    CSPX:{ticker:'CSPX',symbol:'CSPX.L',latestDate:latest,rows},
+    EIMI:{ticker:'EIMI',symbol:'EIMI.L',latestDate:latest,rows:rows.map(x=>({...x,p:x.p*0.5}))},
+    WSML:{ticker:'WSML',symbol:'WSML.L',latestDate:latest,rows:rows.map(x=>({...x,p:x.p*0.02}))}
+  }};
+  await page.route('**/data/market-history.json*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(payload)}));
+  await expect.poll(()=>page.evaluate(()=>!!window.BroadEtfMarketCache)).toBeTruthy();
+  await page.locator('#refreshMarket').click();
+  await expect(page.locator('#feedStatus')).toContainText(/FRESH CACHE|CACHED/);
+  await expect(page.locator('#refreshResult')).toContainText('QA validated cache');
+  for(const ticker of ['CSPX','EIMI','WSML']){
+    const n=await page.evaluate(t=>JSON.parse(localStorage.getItem('broadEtfHistories')||'{}')[t]?.length||0,ticker);
+    expect(n).toBe(260);
+  }
+});
+
+test('cache failure preserves validated local history instead of deleting it', async ({ page }) => {
+  const rows=Array.from({length:220},(_,i)=>({d:String(i).padStart(5,'0'),p:100+i}));
+  await page.evaluate(rows=>localStorage.setItem('broadEtfHistories',JSON.stringify({CSPX:rows,EIMI:rows,WSML:rows})),rows);
+  await page.route('**/data/market-history.json*',route=>route.fulfill({status:503,body:'offline'}));
+  await expect.poll(()=>page.evaluate(()=>!!window.BroadEtfMarketCache)).toBeTruthy();
+  await page.locator('#refreshMarket').click();
+  await expect(page.locator('#feedStatus')).toHaveText('CACHED LOCAL');
+  await expect(page.locator('#refreshResult')).toContainText('Retaining previously validated local history');
+  const counts=await page.evaluate(()=>Object.fromEntries(Object.entries(JSON.parse(localStorage.getItem('broadEtfHistories'))).map(([k,v])=>[k,v.length])));
+  expect(counts).toEqual({CSPX:220,EIMI:220,WSML:220});
 });
 
 test('how-to-use page is reachable', async ({ page }) => {
