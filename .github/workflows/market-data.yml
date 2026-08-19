@@ -1,0 +1,43 @@
+name: Refresh ETF market cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '35 18 * * 1-5'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/update-market-data.mjs'
+      - '.github/workflows/market-data.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-data-cache
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build validated market cache
+        run: node scripts/update-market-data.mjs
+      - name: Commit refreshed cache
+        run: |
+          if git diff --quiet -- data/market-history.json; then
+            echo "Market cache unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/market-history.json
+          git commit -m "Refresh validated ETF market cache"
+          git push
