@@ -10,9 +10,10 @@
     for(const t of CORE){
       const item=data.symbols?.[t];if(!item?.rows?.length)continue;
       const rows=item.rows.map(r=>({d:r.d,p:+r.p})).filter(r=>r.d&&r.p>0);
+      const compat=rows.map(r=>({date:r.d,close:r.p}));
       all[t]=rows;
-      localStorage.setItem('priceHistory_'+t,JSON.stringify(rows));
-      localStorage.setItem('marketHistory_'+t,JSON.stringify(rows));
+      localStorage.setItem('priceHistory_'+t,JSON.stringify(compat));
+      localStorage.setItem('marketHistory_'+t,JSON.stringify(compat));
       if(typeof histories!=='undefined')histories[t]=rows;
       if(typeof ETFs!=='undefined'){
         const e=ETFs.find(x=>x.t===t);if(e&&typeof calcPrices==='function'){
@@ -49,6 +50,7 @@
       const counts=CORE.map(t=>(existing[t]||[]).length),usable=counts.every(n=>n>=200);
       badge.textContent=usable?'CACHED LOCAL':'UNAVAILABLE';
       out.innerHTML=`<span><b>Automatic cache unavailable:</b> ${esc(err.message||err)}</span><span>${usable?'Retaining previously validated local history; no data was discarded.':'No recommendation-grade history is currently available. Use the validated manual history intake rather than relying on market timing.'}</span>`;
+      window.BroadEtfV16?.render?.();window.BroadEtfValidation?.render?.();window.BroadEtfAllocationAudit?.render?.();
       if(typeof run==='function')run();
     }finally{b.disabled=false}
   }
