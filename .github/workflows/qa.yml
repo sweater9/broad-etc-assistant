@@ -16,6 +16,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Validate JavaScript syntax
+        run: |
+          node --check app.js
+          for f in v*.js tests/*.js scripts/*.mjs; do node --check "$f"; done
       - run: npm install
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:ci
