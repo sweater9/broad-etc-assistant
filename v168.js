@@ -2,7 +2,7 @@
 (()=>{
   const CORE=['CSPX','EIMI','WSML'];
   const DAY=86400000;
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   function ageDays(date){const t=Date.parse(date+'T00:00:00Z');return Number.isFinite(t)?Math.floor((Date.now()-t)/DAY):9999}
   function quality(x){const age=ageDays(x?.latestDate);if((x?.rows?.length||0)<200)return{state:'UNAVAILABLE',age};if(age<=3)return{state:'FRESH CACHE',age};if(age<=7)return{state:'CACHED',age};return{state:'STALE',age}}
   function syncStores(data){
@@ -54,7 +54,13 @@
       if(typeof run==='function')run();
     }finally{b.disabled=false}
   }
-  function install(){const b=document.getElementById('refreshMarket');if(!b)return;b.onclick=refresh;b.title='Loads the repository-hosted validated daily market cache; preserves last validated local history if refresh fails.'}
+  function install(){
+    const b=document.getElementById('refreshMarket');if(!b)return;
+    b.onclick=refresh;b.title='Loads the repository-hosted validated daily market cache; preserves last validated local history if refresh fails.';
+    document.title='Broad ETF Investment Assistant V16.8';
+    const version=document.querySelector('h1 small');if(version)version.textContent='V16.8';
+    const notice=document.querySelector('main > .notice');if(notice)notice.innerHTML='<b>V16.8:</b> market refresh now uses a validated same-origin cache with explicit FRESH/CACHED/STALE states and preserves the last validated history if upstream data is temporarily unavailable.';
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
   window.BroadEtfMarketCache={refresh,loadCache,quality};
 })();
