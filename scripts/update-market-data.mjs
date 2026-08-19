@@ -8,6 +8,7 @@ const instruments = {
 
 const OUT = new URL('../data/market-history.json', import.meta.url);
 const now = Date.now();
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function ymd(ts) {
   return new Date(ts * 1000).toISOString().slice(0, 10);
@@ -25,14 +26,9 @@ function validate(ticker, rows) {
   return { ageDays, jumps };
 }
 
-async function fetchYahoo(ticker, symbol) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=10y&interval=1d&events=div%2Csplits&includeAdjustedClose=true`;
-  const response = await fetch(url, {
-    headers: { 'User-Agent': 'BroadETFProductionCache/1.0' },
-    signal: AbortSignal.timeout(20000)
-  });
-  if (!response.ok) throw new Error(`${ticker}: Yahoo HTTP ${response.status}`);
-  const body = await response.json();
+function parseYahoo(ticker, symbol, body) {
+  const error = body?.chart?.error;
+  if (error) throw new Error(`${ticker}: Yahoo ${error.code || 'error'} ${error.description || ''}`.trim());
   const result = body?.chart?.result?.[0];
   if (!result) throw new Error(`${ticker}: Yahoo returned no chart result`);
   const timestamps = result.timestamp || [];
@@ -52,6 +48,36 @@ async function fetchYahoo(ticker, symbol) {
   };
 }
 
+async function requestYahoo(ticker, symbol, host) {
+  const url = `https://${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=10y&interval=1d&events=div%2Csplits&includeAdjustedClose=true`;
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/127 Safari/537.36',
+      'Accept': 'application/json,text/plain,*/*',
+      'Accept-Language': 'en-GB,en;q=0.9'
+    },
+    signal: AbortSignal.timeout(20000)
+  });
+  if (!response.ok) throw new Error(`${ticker}: ${host} HTTP ${response.status}`);
+  return parseYahoo(ticker, symbol, await response.json());
+}
+
+async function fetchYahoo(ticker, symbol) {
+  const hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+  const errors = [];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    for (const host of hosts) {
+      try {
+        return await requestYahoo(ticker, symbol, host);
+      } catch (error) {
+        errors.push(String(error.message || error));
+      }
+    }
+    if (attempt < 2) await sleep(1500 * (attempt + 1));
+  }
+  throw new Error(`${ticker}: Yahoo hosts exhausted — ${errors.join(' | ')}`);
+}
+
 let previous = null;
 try { previous = JSON.parse(await readFile(OUT, 'utf8')); } catch {}
 
@@ -61,9 +87,13 @@ for (const [ticker, cfg] of Object.entries(instruments)) {
   try {
     symbols[ticker] = await fetchYahoo(ticker, cfg.symbol);
   } catch (error) {
-    failures.push(String(error.message || error));
+    const reason = String(error.message || error);
+    failures.push(reason);
     const cached = previous?.symbols?.[ticker];
-    if (cached?.rows?.length >= 250) symbols[ticker] = { ...cached, fallbackReason: String(error.message || error) };
+    if (cached?.rows?.length >= 250) {
+      const cachedQuality = validate(ticker, cached.rows);
+      symbols[ticker] = { ...cached, quality: cachedQuality, fallbackReason: reason };
+    }
   }
 }
 
