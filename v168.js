@@ -1,10 +1,10 @@
-// V16.8 — production market-data cache and freshness/fallback handling
+// V16.8.1 — production market-data cache and freshness/fallback handling
 (()=>{
   const CORE=['CSPX','EIMI','WSML'];
   const DAY=86400000;
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
-  function ageDays(date){const t=Date.parse(date+'T00:00:00Z');return Number.isFinite(t)?Math.floor((Date.now()-t)/DAY):9999}
-  function quality(x){const age=ageDays(x?.latestDate);if((x?.rows?.length||0)<200)return{state:'UNAVAILABLE',age};if(age<=3)return{state:'FRESH CACHE',age};if(age<=7)return{state:'CACHED',age};return{state:'STALE',age}}
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function ageDays(date){const t=Date.parse(date+'T00:00:00Z');return Number.isFinite(t)?Math.max(0,Math.floor((Date.now()-t)/DAY)):9999}
+  function quality(x){const age=ageDays(x?.latestDate);if((x?.rows?.length||0)<200)return{state:'UNAVAILABLE',age};if(age<=4)return{state:'FRESH CACHE',age};if(age<=10)return{state:'CACHED',age};return{state:'STALE',age}}
   function syncStores(data){
     const all={};try{Object.assign(all,JSON.parse(localStorage.getItem('broadEtfHistories')||'{}'))}catch{}
     for(const t of CORE){
@@ -27,39 +27,34 @@
   }
   async function loadCache(){
     const r=await fetch(`data/market-history.json?v=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`Cache HTTP ${r.status}`);
-    const data=await r.json();
-    if(!data?.symbols)throw new Error('Invalid cache payload');
+    const data=await r.json();if(!data?.symbols)throw new Error('Invalid cache payload');
     const missing=CORE.filter(t=>(data.symbols[t]?.rows?.length||0)<200);if(missing.length)throw new Error(`Insufficient cache: ${missing.join(', ')}`);
     return data;
   }
   async function refresh(){
-    const b=document.getElementById('refreshMarket'),out=document.getElementById('refreshResult'),badge=document.getElementById('feedStatus');
-    if(!b||!out||!badge)return;
+    const b=document.getElementById('refreshMarket'),out=document.getElementById('refreshResult'),badge=document.getElementById('feedStatus');if(!b||!out||!badge)return;
     b.disabled=true;badge.textContent='REFRESHING';out.innerHTML='<span>Loading validated same-origin market cache…</span>';
     try{
       const data=await loadCache();syncStores(data);
-      const states=CORE.map(t=>({t,...quality(data.symbols[t]),x:data.symbols[t]}));
-      const worst=states.reduce((a,x)=>Math.max(a,x.age),0);
-      badge.textContent=worst<=3?'FRESH CACHE':worst<=7?'CACHED':'STALE';
+      const states=CORE.map(t=>({t,...quality(data.symbols[t]),x:data.symbols[t]}));const worst=Math.max(...states.map(x=>x.age));
+      badge.textContent=worst<=4?'FRESH CACHE':worst<=10?'CACHED':'STALE';
       out.innerHTML=states.map(s=>`<span><b>${s.t}</b> ${esc(s.state)} · ${s.x.rows.length} closes · latest ${esc(s.x.latestDate)} (${s.age}d old)</span>`).join('')+`<span><b>Source:</b> ${esc(data.source||'validated repository cache')} · generated ${esc((data.generatedAt||'').replace('T',' ').slice(0,19))} UTC</span>`;
-      if(typeof backtestReadiness==='function')backtestReadiness();
-      window.BroadEtfV16?.render?.();window.BroadEtfValidation?.render?.();window.BroadEtfAllocationAudit?.render?.();
-      if(typeof run==='function')run();
+      if(typeof backtestReadiness==='function')backtestReadiness();window.BroadEtfV16?.render?.();window.BroadEtfValidation?.render?.();window.BroadEtfAllocationAudit?.render?.();if(typeof run==='function')run();
     }catch(err){
       let existing={};try{existing=JSON.parse(localStorage.getItem('broadEtfHistories')||'{}')}catch{}
-      const counts=CORE.map(t=>(existing[t]||[]).length),usable=counts.every(n=>n>=200);
-      badge.textContent=usable?'CACHED LOCAL':'UNAVAILABLE';
-      out.innerHTML=`<span><b>Automatic cache unavailable:</b> ${esc(err.message||err)}</span><span>${usable?'Retaining previously validated local history; no data was discarded.':'No recommendation-grade history is currently available. Use the validated manual history intake rather than relying on market timing.'}</span>`;
-      window.BroadEtfV16?.render?.();window.BroadEtfValidation?.render?.();window.BroadEtfAllocationAudit?.render?.();
-      if(typeof run==='function')run();
+      const usable=CORE.every(t=>(existing[t]||[]).length>=200);badge.textContent=usable?'CACHED LOCAL':'UNAVAILABLE';
+      out.innerHTML=`<span><b>Automatic cache unavailable:</b> ${esc(err.message||err)}</span><span>${usable?'Retaining previously validated local history; no data was discarded.':'No recommendation-grade history is currently available. Market timing remains blocked; portfolio allocation tools remain usable.'}</span>`;
+      window.BroadEtfV16?.render?.();window.BroadEtfValidation?.render?.();window.BroadEtfAllocationAudit?.render?.();if(typeof run==='function')run();
     }finally{b.disabled=false}
   }
   function install(){
     const b=document.getElementById('refreshMarket');if(!b)return;
-    b.onclick=refresh;b.title='Loads the repository-hosted validated daily market cache; preserves last validated local history if refresh fails.';
-    document.title='Broad ETF Investment Assistant V16.8';
-    const version=document.querySelector('h1 small');if(version)version.textContent='V16.8';
-    const notice=document.querySelector('main > .notice');if(notice)notice.innerHTML='<b>V16.8:</b> market refresh now uses a validated same-origin cache with explicit FRESH/CACHED/STALE states and preserves the last validated history if upstream data is temporarily unavailable.';
+    // Older versions registered click listeners with addEventListener. Capture-phase interception
+    // makes this validated same-origin cache the single authoritative refresh path.
+    b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();refresh();},true);
+    b.onclick=null;b.title='Loads the repository-hosted validated daily market cache; preserves last validated local history if refresh fails.';
+    document.title='Broad ETF Investment Assistant V16.8.1';const version=document.querySelector('h1 small');if(version)version.textContent='V16.8.1';
+    const notice=document.querySelector('main > .notice');if(notice)notice.innerHTML='<b>V16.8.1:</b> market refresh is now routed exclusively through the validated same-origin cache, with FRESH/CACHED/STALE/UNAVAILABLE states and last-known-good fallback.';
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
   window.BroadEtfMarketCache={refresh,loadCache,quality};
