@@ -21,9 +21,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   refresh:
-    # Verify the download on an independent runner pool: Ubuntu's current
-    # Yahoo egress is consistently rate-limited. Retries remain bounded.
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write

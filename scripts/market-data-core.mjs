@@ -63,11 +63,54 @@ export async function fetchYahoo(ticker, cfg, { fetchImpl = fetch, sleep = ms =>
   }
   throw new Error(`${ticker}: Yahoo hosts exhausted — ${errors.join(' | ')}`);
 }
-export async function refreshMarket(previous, { fetchHistory = fetchYahoo, now = Date.now() } = {}) {
+// Independent LSE USD closing-price feed. Keep the validated long history and
+// require overlapping closes to agree before appending a recent provider window.
+export function parseFT(ticker, cfg, html, cached, now = Date.now()) {
+  const identity = `${ticker}:LSE:USD`;
+  if (!html.includes(`<title>`) || !html.includes(identity) || !html.includes('historical prices - FT.com</title>')) throw new Error('FT instrument identity mismatch');
+  if (cached?.symbol !== cfg.symbol || cached?.currency !== cfg.currency) throw new Error('FT requires matching validated base history');
+  validate(ticker, cached.rows, now, { requireFresh: false });
+  const table = html.match(/<table[^>]*class="[^"]*mod-tearsheet-historical-prices__results[^"]*"[^>]*>([\s\S]*?)<\/table>/)?.[1];
+  if (!table || !/<th>Close<\/th>/.test(table)) throw new Error('FT closing-price table missing');
+  const recent = [];
+  for (const match of table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)) {
+    const cells = [...match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(m => m[1]);
+    if (!cells.length) continue;
+    if (cells.length !== 6) throw new Error('FT table columns changed');
+    const label = cells[0].match(/<span class="mod-ui-hide-small-below">([^<]+)<\/span>/)?.[1];
+    const date = Date.parse((label || '') + ' 00:00:00 GMT');
+    const price = Number(cells[4].replace(/,/g, '').trim());
+    if (!Number.isFinite(date) || !Number.isFinite(price) || price <= 0) throw new Error('FT invalid observation');
+    recent.push({ d: new Date(date).toISOString().slice(0, 10), p: price });
+  }
+  recent.sort((a,b) => a.d.localeCompare(b.d));
+  if (recent.length < 5) throw new Error('FT recent window too short');
+  const old = new Map(cached.rows.map(r => [r.d, r.p]));
+  const overlap = recent.filter(r => old.has(r.d));
+  if (overlap.length < 3 || overlap.some(r => Math.abs(r.p / old.get(r.d) - 1) > 0.002)) throw new Error('FT overlap disagrees with cached USD closes');
+  // Retain existing historical observations; append only newly observed sessions.
+  const rows = [...cached.rows, ...recent.filter(r => r.d > cached.rows.at(-1).d)];
+  const quality = validate(ticker, rows, now);
+  return { ticker, symbol: cfg.symbol, currency: cfg.currency, exchange: 'LSE', latestDate: rows.at(-1).d, observations: rows.length, quality, source: 'Yahoo Finance history + Financial Times LSE USD closes', rows };
+}
+export async function fetchFT(ticker, cfg, cached, { fetchImpl = fetch, now = Date.now() } = {}) {
+  const url = `https://markets.ft.com/data/etfs/tearsheet/historical?s=${ticker}:LSE:USD`;
+  const response = await fetchImpl(url, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html' }, signal: AbortSignal.timeout(30000) });
+  if (!response.ok) throw new Error(`FT HTTP ${response.status}`);
+  return parseFT(ticker, cfg, await response.text(), cached, now);
+}
+export async function fetchHistoryWithFallback(ticker, cfg, cached) {
+  try { return await fetchYahoo(ticker, cfg); }
+  catch (yahooError) {
+    try { return await fetchFT(ticker, cfg, cached); }
+    catch (ftError) { throw new Error(`${yahooError.message}; ${ftError.message}`); }
+  }
+}
+export async function refreshMarket(previous, { fetchHistory = fetchHistoryWithFallback, now = Date.now() } = {}) {
   const symbols = {}, diagnostics = {}, failures = [];
   for (const [ticker, cfg] of Object.entries(instruments)) {
     try {
-      const fresh = await fetchHistory(ticker, cfg);
+      const fresh = await fetchHistory(ticker, cfg, previous?.symbols?.[ticker]);
       const quality = validate(ticker, fresh.rows, now);
       if (fresh.symbol !== cfg.symbol || fresh.currency !== cfg.currency) throw new Error('Instrument identity mismatch');
       const prior = previous?.symbols?.[ticker];
@@ -88,7 +131,7 @@ export async function refreshMarket(previous, { fetchHistory = fetchYahoo, now =
   }
   const complete = Object.keys(symbols).length === Object.keys(instruments).length;
   const successful = complete && failures.length === 0;
-  const status = { generatedAt: new Date(now).toISOString(), complete, successful, source: 'Yahoo Finance chart cache', requiredInstruments: Object.keys(instruments), diagnostics, failures };
+  const status = { generatedAt: new Date(now).toISOString(), complete, successful, source: [...new Set(Object.values(symbols).map(s => s.source))].join('; ') || 'Validated market cache', requiredInstruments: Object.keys(instruments), diagnostics, failures };
   const payload = { schemaVersion: 1, generatedAt: new Date(now).toISOString(), source: status.source, sourceType: 'server-side cached delayed market data', instruments, failures, symbols };
   return { status, payload, successful };
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchYahoo, instruments, parseYahoo, refreshMarket, retryDelay, validate } from '../scripts/market-data-core.mjs';
+import { fetchFT, parseFT, fetchYahoo, instruments, parseYahoo, refreshMarket, retryDelay, validate } from '../scripts/market-data-core.mjs';
 const now = Date.parse('2026-10-10T12:00:00Z');
 const rows = (daysOld = 1) => Array.from({ length: 260 }, (_, i) => ({ d: new Date(now - (daysOld + 259 - i) * 86400000).toISOString().slice(0, 10), p: 100 + i / 10 }));
 const history = (ticker, daysOld = 1) => ({ ticker, symbol: instruments[ticker].symbol, currency: 'USD', exchange: 'LSE', latestDate: rows(daysOld).at(-1).d, rows: rows(daysOld) });
@@ -58,4 +58,20 @@ test('missing cache and regressed upstream never lose other downloaded series', 
   const regressed = await refreshMarket({ symbols: { CSPX: history('CSPX') } }, { now, fetchHistory: async t => history(t, 2) });
   assert.equal(regressed.status.diagnostics.CSPX.status, 'cached-fallback');
   assert.equal(regressed.payload.symbols.CSPX.latestDate, '2026-10-09');
+});
+
+const ftHTML = (prices, ticker = 'CSPX') => `<title>${ticker}:LSE:USD historical prices - FT.com</title><table class="mod-tearsheet-historical-prices__results"><th>Close</th>${prices.map(r => `<tr><td><span class="mod-ui-hide-small-below">${new Date(r.d + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: '2-digit', timeZone: 'UTC' })}</span></td><td>1</td><td>1</td><td>1</td><td>${r.p}</td><td>1</td></tr>`).join('')}</table>`;
+test('independent closing feed appends without rewriting history and checks overlap', async () => {
+  const cached = history('CSPX', 2);
+  const recent = [...cached.rows.slice(-5), { d: '2026-10-09', p: 126 }];
+  const html = ftHTML(recent);
+  const parsed = parseFT('CSPX', instruments.CSPX, html, cached, now);
+  assert.equal(parsed.latestDate, '2026-10-09');
+  assert.deepEqual(parsed.rows.slice(0, -1), cached.rows);
+  assert.throws(() => parseFT('EIMI', instruments.EIMI, html, cached, now), /identity/);
+  assert.throws(() => parseFT('CSPX', instruments.CSPX, ftHTML(recent.map(r => ({ ...r, p: r.p * 100 }))), cached, now), /overlap/);
+  assert.throws(() => parseFT('CSPX', instruments.CSPX, html, null, now), /base history/);
+  const fetched = await fetchFT('CSPX', instruments.CSPX, cached, { now, fetchImpl: async () => new Response(html) });
+  assert.equal(fetched.latestDate, parsed.latestDate);
+  await assert.rejects(fetchFT('CSPX', instruments.CSPX, cached, { now, fetchImpl: async () => new Response('', { status: 503 }) }), /HTTP 503/);
 });
