@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-10T08:55:04.374Z",
+  "generatedAt": "2026-10-10T08:58:01.515Z",
   "source": "Yahoo Finance history + Financial Times LSE USD closes",
   "sourceType": "server-side cached delayed market data",
   "instruments": {
@@ -10136,7 +10136,7 @@
           "p": 841.26
         }
       ],
-      "fetchedAt": "2026-10-10T08:55:04.374Z"
+      "fetchedAt": "2026-10-10T08:58:01.515Z"
     },
     "EIMI": {
       "ticker": "EIMI",
@@ -20260,7 +20260,7 @@
           "p": 54.75
         }
       ],
-      "fetchedAt": "2026-10-10T08:55:04.374Z"
+      "fetchedAt": "2026-10-10T08:58:01.515Z"
     },
     "WSML": {
       "ticker": "WSML",
@@ -28904,7 +28904,7 @@
           "p": 10.19
         }
       ],
-      "fetchedAt": "2026-10-10T08:55:04.374Z"
+      "fetchedAt": "2026-10-10T08:58:01.515Z"
     }
   }
 }
