@@ -42,3 +42,11 @@ The application is static and GitHub Pages compatible. `main` is the production 
 ## Important
 
 This is an educational decision-support tool, not regulated investment advice. Broad-market ETFs can lose value. Backtests, projections, valuation signals, drawdowns and risk measures are illustrative and do not guarantee future returns. No automatic trading is performed.
+
+## Market refresh reliability
+
+The scheduled download runs on macOS to use a different runner pool from the consistently rate-limited Ubuntu Yahoo path. Both Yahoo chart hosts remain subject to upstream availability. Temporary HTTP errors use bounded exponential backoff with jitter and `Retry-After`; permanent errors move to the alternate host. No credentials or paid provider are needed.
+
+Each history is checked for the exact London symbol, USD currency, positive closes, valid increasing dates, sufficient observations and freshness. New downloads cannot regress behind the cached date. Each refresh persists available successful series and structurally valid previous series atomically, even when another ETF fails. Older fallback series retain their own data dates and are shown as stale by the browser. A cached-only or partial download still fails the job; it is never presented as a successful fresh update. Diagnostics are committed independently of whether the history file exists.
+
+Pull requests run a real download on macOS without committing generated output. They upload diagnostics and fail if any fresh instrument download fails. Run deterministic recovery tests locally with `node --test tests/market-data.test.mjs`.

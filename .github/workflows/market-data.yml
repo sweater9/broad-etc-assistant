@@ -1,5 +1,4 @@
 name: Refresh ETF market cache
-
 on:
   workflow_dispatch:
   schedule:
@@ -7,45 +6,60 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/update-market-data.mjs'
+      - 'scripts/*market*.mjs'
       - '.github/workflows/market-data.yml'
-
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/*market*.mjs'
+      - 'tests/market-data.test.mjs'
+      - '.github/workflows/market-data.yml'
 permissions:
-  contents: write
-
+  contents: read
 concurrency:
-  group: market-data-cache
-  cancel-in-progress: true
-
+  group: market-data-cache-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   refresh:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Verify the download on an independent runner pool: Ubuntu's current
+    # Yahoo egress is consistently rate-limited. Retries remain bounded.
+    runs-on: macos-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+      - name: Test cache validation and recovery
+        run: node --test tests/market-data.test.mjs
       - name: Build validated market cache
         id: market
         continue-on-error: true
         run: node scripts/update-market-data.mjs
+      - name: Upload refresh diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-refresh-diagnostics
+          path: data/market-update-status.json
+          if-no-files-found: warn
       - name: Commit cache and diagnostics
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/market-history.json data/market-update-status.json 2>/dev/null || true
-          if git diff --cached --quiet; then
-            echo "No market-data changes to commit"
-          else
-            git commit -m "Refresh validated ETF market cache diagnostics"
+          for file in data/market-history.json data/market-update-status.json; do
+            if [ -f "$file" ]; then git add "$file"; fi
+          done
+          if ! git diff --cached --quiet; then
+            git commit -m "Refresh validated ETF market cache and diagnostics"
             git pull --rebase origin main
             git push
           fi
-      - name: Enforce successful refresh
+      - name: Enforce fresh download
         if: steps.market.outcome != 'success'
         run: |
-          echo "Market cache refresh failed. See data/market-update-status.json for diagnostics."
+          echo "Fresh market download failed. Cached or stale history is preserved, but is not a successful refresh."
           exit 1

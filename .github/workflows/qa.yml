@@ -20,6 +20,8 @@ jobs:
         run: |
           node --check app.js
           for f in v*.js tests/*.js scripts/*.mjs; do node --check "$f"; done
+      - name: Test market cache recovery
+        run: node --test tests/market-data.test.mjs
       - run: npm install
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:ci

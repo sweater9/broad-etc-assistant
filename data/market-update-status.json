@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-10-10T08:36:39.179Z",
+  "complete": true,
+  "successful": true,
+  "source": "Yahoo Finance chart cache",
+  "requiredInstruments": [
+    "CSPX",
+    "EIMI",
+    "WSML"
+  ],
+  "diagnostics": {
+    "CSPX": {
+      "status": "fresh",
+      "latestDate": "2026-10-08",
+      "observations": 2524
+    },
+    "EIMI": {
+      "status": "fresh",
+      "latestDate": "2026-10-08",
+      "observations": 2526
+    },
+    "WSML": {
+      "status": "fresh",
+      "latestDate": "2026-10-08",
+      "observations": 2156
+    }
+  },
+  "failures": []
+}
