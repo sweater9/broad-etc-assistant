@@ -5,7 +5,9 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   // Research and manual intake controls live inside collapsed native details.
-  for (const summary of await page.locator("details:not([open]) > summary").all()) await summary.click();
+  for (const summary of await page.locator("details > summary").all()) {
+    if (await summary.evaluate(el => !el.parentElement.open)) await summary.click();
+  }
 });
 
 test('core page and navigation render', async ({ page }) => {
