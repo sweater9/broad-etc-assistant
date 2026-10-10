@@ -67,7 +67,7 @@ export async function fetchYahoo(ticker, cfg, { fetchImpl = fetch, sleep = ms =>
 // require overlapping closes to agree before appending a recent provider window.
 export function parseFT(ticker, cfg, html, cached, now = Date.now()) {
   const identity = `${ticker}:LSE:USD`;
-  if (!html.includes(`<title>`) || !html.includes(identity) || !html.includes('historical prices - FT.com</title>')) throw new Error('FT instrument identity mismatch');
+  if (!html.match(/<title>([^<]+)<\/title>/)?.[1]?.includes(identity + ' historical prices - FT.com')) throw new Error('FT instrument identity mismatch');
   if (cached?.symbol !== cfg.symbol || cached?.currency !== cfg.currency) throw new Error('FT requires matching validated base history');
   validate(ticker, cached.rows, now, { requireFresh: false });
   const table = html.match(/<table[^>]*class="[^"]*mod-tearsheet-historical-prices__results[^"]*"[^>]*>([\s\S]*?)<\/table>/)?.[1];
@@ -100,7 +100,11 @@ export async function fetchFT(ticker, cfg, cached, { fetchImpl = fetch, now = Da
   return parseFT(ticker, cfg, await response.text(), cached, now);
 }
 export async function fetchHistoryWithFallback(ticker, cfg, cached) {
-  try { return await fetchYahoo(ticker, cfg); }
+  try {
+    const yahoo = await fetchYahoo(ticker, cfg);
+    if (cached?.latestDate && yahoo.latestDate < cached.latestDate) throw new Error(`${ticker}: Yahoo history regressed behind cached date`);
+    return yahoo;
+  }
   catch (yahooError) {
     try { return await fetchFT(ticker, cfg, cached); }
     catch (ftError) { throw new Error(`${yahooError.message}; ${ftError.message}`); }
