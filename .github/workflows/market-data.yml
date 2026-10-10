@@ -25,6 +25,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      pages: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,6 +57,11 @@ jobs:
             git pull --rebase origin main
             git push
           fi
+      - name: Publish updated cache to GitHub Pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/${{ github.repository }}/pages/builds" --method POST
       - name: Enforce fresh download
         if: steps.market.outcome != 'success'
         run: |
