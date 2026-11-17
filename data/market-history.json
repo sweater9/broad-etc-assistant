@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-13T23:49:57.320Z",
+  "generatedAt": "2026-11-17T02:01:57.917Z",
   "source": "Yahoo Finance history + Financial Times LSE USD closes",
   "sourceType": "server-side cached delayed market data",
   "instruments": {
@@ -27,10 +27,10 @@
       "symbol": "CSPX.L",
       "currency": "USD",
       "exchange": "LSE",
-      "latestDate": "2026-11-13",
-      "observations": 2550,
+      "latestDate": "2026-11-16",
+      "observations": 2551,
       "quality": {
-        "ageDays": 0,
+        "ageDays": 1,
         "jumps": 0
       },
       "source": "Yahoo Finance history + Financial Times LSE USD closes",
@@ -10234,19 +10234,23 @@
         {
           "d": "2026-11-13",
           "p": 813.41
+        },
+        {
+          "d": "2026-11-16",
+          "p": 808.41
         }
       ],
-      "fetchedAt": "2026-11-13T23:49:57.320Z"
+      "fetchedAt": "2026-11-17T02:01:57.917Z"
     },
     "EIMI": {
       "ticker": "EIMI",
       "symbol": "EIMI.L",
       "currency": "USD",
       "exchange": "LSE",
-      "latestDate": "2026-11-13",
-      "observations": 2552,
+      "latestDate": "2026-11-16",
+      "observations": 2553,
       "quality": {
-        "ageDays": 0,
+        "ageDays": 1,
         "jumps": 0
       },
       "source": "Yahoo Finance history + Financial Times LSE USD closes",
@@ -20458,19 +20462,23 @@
         {
           "d": "2026-11-13",
           "p": 49.63
+        },
+        {
+          "d": "2026-11-16",
+          "p": 48.77
         }
       ],
-      "fetchedAt": "2026-11-13T23:49:57.320Z"
+      "fetchedAt": "2026-11-17T02:01:57.917Z"
     },
     "WSML": {
       "ticker": "WSML",
       "symbol": "WSML.L",
       "currency": "USD",
       "exchange": "LSE",
-      "latestDate": "2026-11-13",
-      "observations": 2182,
+      "latestDate": "2026-11-16",
+      "observations": 2183,
       "quality": {
-        "ageDays": 0,
+        "ageDays": 1,
         "jumps": 0
       },
       "source": "Yahoo Finance history + Financial Times LSE USD closes",
@@ -29202,9 +29210,13 @@
         {
           "d": "2026-11-13",
           "p": 10.17
+        },
+        {
+          "d": "2026-11-16",
+          "p": 10.11
         }
       ],
-      "fetchedAt": "2026-11-13T23:49:57.320Z"
+      "fetchedAt": "2026-11-17T02:01:57.917Z"
     }
   }
 }
