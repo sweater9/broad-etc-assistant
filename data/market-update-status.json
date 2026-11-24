@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-21T00:09:42.325Z",
+  "generatedAt": "2026-11-24T04:03:38.982Z",
   "complete": true,
   "successful": true,
   "source": "Yahoo Finance history + Financial Times LSE USD closes",
@@ -11,18 +11,18 @@
   "diagnostics": {
     "CSPX": {
       "status": "fresh",
-      "latestDate": "2026-11-20",
-      "observations": 2555
+      "latestDate": "2026-11-23",
+      "observations": 2556
     },
     "EIMI": {
       "status": "fresh",
-      "latestDate": "2026-11-20",
-      "observations": 2557
+      "latestDate": "2026-11-23",
+      "observations": 2558
     },
     "WSML": {
       "status": "fresh",
-      "latestDate": "2026-11-20",
-      "observations": 2187
+      "latestDate": "2026-11-23",
+      "observations": 2188
     }
   },
   "failures": []
