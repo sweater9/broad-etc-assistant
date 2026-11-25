@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-24T04:03:38.982Z",
+  "generatedAt": "2026-11-25T02:45:14.941Z",
   "source": "Yahoo Finance history + Financial Times LSE USD closes",
   "sourceType": "server-side cached delayed market data",
   "instruments": {
@@ -27,8 +27,8 @@
       "symbol": "CSPX.L",
       "currency": "USD",
       "exchange": "LSE",
-      "latestDate": "2026-11-23",
-      "observations": 2556,
+      "latestDate": "2026-11-24",
+      "observations": 2557,
       "quality": {
         "ageDays": 1,
         "jumps": 0
@@ -10258,17 +10258,21 @@
         {
           "d": "2026-11-23",
           "p": 783.61
+        },
+        {
+          "d": "2026-11-24",
+          "p": 773.39
         }
       ],
-      "fetchedAt": "2026-11-24T04:03:38.982Z"
+      "fetchedAt": "2026-11-25T02:45:14.941Z"
     },
     "EIMI": {
       "ticker": "EIMI",
       "symbol": "EIMI.L",
       "currency": "USD",
       "exchange": "LSE",
-      "latestDate": "2026-11-23",
-      "observations": 2558,
+      "latestDate": "2026-11-24",
+      "observations": 2559,
       "quality": {
         "ageDays": 1,
         "jumps": 0
@@ -20506,17 +20510,21 @@
         {
           "d": "2026-11-23",
           "p": 47.7
+        },
+        {
+          "d": "2026-11-24",
+          "p": 46.24
         }
       ],
-      "fetchedAt": "2026-11-24T04:03:38.982Z"
+      "fetchedAt": "2026-11-25T02:45:14.941Z"
     },
     "WSML": {
       "ticker": "WSML",
       "symbol": "WSML.L",
       "currency": "USD",
       "exchange": "LSE",
-      "latestDate": "2026-11-23",
-      "observations": 2188,
+      "latestDate": "2026-11-24",
+      "observations": 2189,
       "quality": {
         "ageDays": 1,
         "jumps": 0
@@ -29274,9 +29282,13 @@
         {
           "d": "2026-11-23",
           "p": 9.75
+        },
+        {
+          "d": "2026-11-24",
+          "p": 9.72
         }
       ],
-      "fetchedAt": "2026-11-24T04:03:38.982Z"
+      "fetchedAt": "2026-11-25T02:45:14.941Z"
     }
   }
 }
